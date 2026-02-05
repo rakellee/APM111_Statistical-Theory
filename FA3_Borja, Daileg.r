@@ -90,7 +90,7 @@ descriptive_table$Score <- c(
   formatC(descriptive_table$Score[-1], format = "f", digits = 3)
 )
 
-cat("\nDescriptive Statistics\n")
+cat("Descriptive Statistics\n")
 cat(strrep("-", 44), "\n")
 
 # Header
