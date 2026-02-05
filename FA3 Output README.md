@@ -1,4 +1,12 @@
-# FA3_Output
+# FA3_Output_Borja, Daileg
+# Descriptive Statistics (SPSS-Equivalent)
+
+## Files
+- `FA3_Borja, Daileg.R` – R script used to compute the statistics
+- `FA3 Output README.md` – Output and documentation
+
+## Output
+
 Descriptive Statistics
 -------------------------------------------- 
  Measure                            Score
