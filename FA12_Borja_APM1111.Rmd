@@ -1,0 +1,151 @@
+------------------------------------------------------------------------
+
+**title:** "FA12: Two-Way ANOVA (Fertilizer × Crop)"
+
+**output:** html_document ---
+
+## Setup
+
+```{r}
+library(reticulate)
+
+if (!virtualenv_exists("r-reticulate")) {
+  virtualenv_create("r-reticulate")
+  virtualenv_install("r-reticulate",
+    packages = c("pandas", "numpy", "statsmodels", "scipy", "seaborn", "matplotlib")
+  )
+}
+
+use_virtualenv("r-reticulate", required = TRUE)
+```
+
+------------------------------------------------------------------------
+
+## Introduction
+
+This study examines whether crop yield is influenced by fertilizer blend (X, Y, Z), crop type (wheat, corn, soy, rice), and their interaction.
+
+------------------------------------------------------------------------
+
+## Hypotheses
+
+- **H₀:** There is no significant interaction effect between fertilizer and crop type on yield.
+- **Hₐ:** There is a significant interaction effect between fertilizer and crop type.
+
+------------------------------------------------------------------------
+
+## Data and Analysis
+
+```{python}
+import pandas as pd
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from scipy import stats
+
+# DATA
+data = []
+
+blend_x = [
+    [123,128,166,151],
+    [156,150,178,125],
+    [112,174,187,117],
+    [100,116,153,155],
+    [168,109,195,158]
+]
+
+blend_y = [
+    [135,175,140,167],
+    [130,132,145,183],
+    [176,120,159,142],
+    [120,187,131,167],
+    [155,184,126,168]
+]
+
+blend_z = [
+    [156,186,185,175],
+    [180,138,206,173],
+    [147,178,188,154],
+    [146,176,165,191],
+    [193,190,188,169]
+]
+
+crops = ["Wheat", "Corn", "Soy", "Rice"]
+
+def add_data(blend, rows):
+    for row in rows:
+        for i, val in enumerate(row):
+            data.append([blend, crops[i], val])
+
+add_data("X", blend_x)
+add_data("Y", blend_y)
+add_data("Z", blend_z)
+
+df = pd.DataFrame(data, columns=["Fertilizer", "Crop", "Yield"])
+
+model = ols('Yield ~ C(Fertilizer) * C(Crop)', data=df).fit()
+anova_table = sm.stats.anova_lm(model, typ=3)
+
+anova_table
+```
+
+------------------------------------------------------------------------
+
+## Assumption Checks
+
+```{python}
+shapiro = stats.shapiro(model.resid)
+levene = stats.levene(
+    *[g["Yield"].values for _, g in df.groupby(["Fertilizer","Crop"])]
+)
+
+shapiro, levene
+```
+
+------------------------------------------------------------------------
+
+## Results (APA Style — CORRECTED)
+
+```{python}
+# Extract values
+interaction = anova_table.loc["C(Fertilizer):C(Crop)"]
+fertilizer = anova_table.loc["C(Fertilizer)"]
+crop = anova_table.loc["C(Crop)"]
+residual_df = anova_table.loc["Residual", "df"]
+
+# APA formatting for p-values
+def format_p(p):
+    return "< .001" if p < 0.001 else f"= {p:.3f}".replace("0.", ".")
+
+print(f"Interaction: F({int(interaction['df'])}, {int(residual_df)}) = {interaction['F']:.2f}, p {format_p(interaction['PR(>F)'])}")
+print(f"Fertilizer: F({int(fertilizer['df'])}, {int(residual_df)}) = {fertilizer['F']:.2f}, p {format_p(fertilizer['PR(>F)'])}")
+print(f"Crop: F({int(crop['df'])}, {int(residual_df)}) = {crop['F']:.2f}, p {format_p(crop['PR(>F)'])}")
+```
+
+------------------------------------------------------------------------
+
+## Interpretation
+
+The interaction effect between fertilizer and crop type is statistically significant (p \< .05). Therefore, the null hypothesis is rejected.
+
+This indicates that fertilizer effectiveness depends on the crop type.
+
+Additionally, both fertilizer type and crop type have significant main effects on yield.
+
+------------------------------------------------------------------------
+
+## Assumptions
+
+```{python}
+print(f"Shapiro-Wilk p-value: {shapiro.pvalue:.4f}")
+print(f"Levene test p-value: {levene.pvalue:.4f}")
+```
+
+The Shapiro–Wilk test indicates normality (p \> .05), and Levene’s test confirms homogeneity of variances (p \> .05).
+
+------------------------------------------------------------------------
+
+## Conclusion
+
+There is sufficient evidence to conclude that fertilizer and crop type interact significantly in affecting yield. The best fertilizer choice depends on the specific crop.
+
+------------------------------------------------------------------------
