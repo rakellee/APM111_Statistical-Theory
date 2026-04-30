@@ -1,0 +1,187 @@
+---
+author: "by Borja, Rachelle Erika"
+title: "FA13: Two-Way Mixed ANOVA (Cholesterol Over Time)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ez)
+library(rstatix)
+```
+---
+
+# Introduction
+
+---
+
+This study examines whether cholesterol levels differ between two margarine brands across three time points using a two-way mixed ANOVA. Margarine type (Brand A vs. Brand B) is the between-subjects factor, and time (Before, After 4 weeks, After 8 weeks) is the within-subjects factor. The dependent variable is cholesterol level.
+
+The null hypothesis states that there is no significant difference in cholesterol levels between the two brands of margarine over the three time points.
+
+---
+
+## Hypotheses
+
+---
+
+H₀: There is no significant interaction between margarine type and time on cholesterol levels.  
+Hₐ: There is a significant interaction between margarine type and time on cholesterol levels.
+
+---
+
+# Data Preparation
+
+---
+
+```{r}
+data <- read.csv("documents/Cholesterol_R2.csv")
+
+data_long <- data %>%
+  pivot_longer(cols = c(Before, After4weeks, After8weeks),
+               names_to = "Time",
+               values_to = "Cholesterol")
+
+data_long$ID <- as.factor(data_long$ID)
+data_long$Margarine <- as.factor(data_long$Margarine)
+data_long$Time <- factor(data_long$Time,
+                         levels = c("Before", "After4weeks", "After8weeks"))
+
+head(data_long)
+```
+
+---
+
+# Assumption Checking
+
+---
+
+## Normality
+
+---
+
+```{r}
+data_long %>%
+  group_by(Margarine, Time) %>%
+  shapiro_test(Cholesterol)
+```
+
+The Shapiro–Wilk test indicates that the assumption of normality is satisfied for all groups (p > .05).
+
+---
+
+## Homogeneity of Variance
+
+---
+
+```{r}
+levene_test(Cholesterol ~ Margarine, data = data_long)
+```
+
+Levene’s test shows that the assumption of homogeneity of variance is met (p > .05).
+
+---
+
+## Sphericity
+
+---
+
+```{r}
+anova_test(
+  data = data_long,
+  dv = Cholesterol,
+  wid = ID,
+  within = Time,
+  between = Margarine
+)
+```
+
+Mauchly’s test indicates that the assumption of sphericity is met (p > .05). Therefore, no correction is required.
+
+---
+
+# Two-Way Mixed ANOVA
+
+---
+
+```{r}
+anova_results <- ezANOVA(
+  data = data_long,
+  dv = Cholesterol,
+  wid = ID,
+  within = .(Time),
+  between = .(Margarine),
+  type = 3,
+  detailed = TRUE
+)
+
+anova_results
+```
+
+---
+
+# Post Hoc Analysis
+
+---
+
+```{r}
+pairwise_t_test(
+  data_long,
+  Cholesterol ~ Time,
+  paired = TRUE,
+  p.adjust.method = "bonferroni"
+)
+```
+
+Post hoc comparisons using Bonferroni adjustment were conducted to examine differences across time points.
+
+---
+
+# Visualization
+
+---
+
+```{r}
+ggplot(data_long, aes(x = Time, y = Cholesterol, color = Margarine, group = Margarine)) +
+  stat_summary(fun = mean, geom = "line") +
+  stat_summary(fun = mean, geom = "point") +
+  theme_minimal()
+```
+
+---
+
+# Results (in APA Format)
+
+---
+
+A two-way mixed ANOVA was conducted to examine the effects of margarine type and time on cholesterol levels.
+
+The null hypothesis stated that there is no significant interaction between margarine type and time on cholesterol levels.
+
+There was no significant main effect of margarine, *F*(1, 16) = 1.90, *p* = .187, indicating that overall cholesterol levels did not differ significantly between the two brands.
+
+There was a significant main effect of time, *F*(2, 32) = 259.95, *p* < .001, indicating that cholesterol levels changed significantly across time.
+
+There was a significant interaction between margarine and time, *F*(2, 32) = 4.81, *p* = .015, indicating that the effect of margarine on cholesterol levels depends on time.
+
+---
+
+# Interpretation
+
+---
+
+The significant interaction effect indicates that the change in cholesterol levels over time varies according to the type of margarine consumed. While cholesterol levels tend to decline with time, the rate and pattern of drop differ across the two brands.
+
+---
+
+# Conclusion
+
+---
+
+The null hypothesis is rejected. There is a statistically significant interaction between margarine type and time, demonstrating that cholesterol levels vary between the two brands at all three time points. This shows that the efficacy of margarine in lowering cholesterol is dependent on the length of use.
+
+This indicates that the efficacy of margarine in lowering cholesterol is dependent on the length of use.
+
+```
+```
