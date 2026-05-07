@@ -1,0 +1,296 @@
+---
+author: "by Borja, Rachelle Erika"
+title: "Mixed-Design ANOVA Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Introduction
+
+This study examined whether dating preferences were influenced by:
+
+- Gender (Male vs Female)
+- Looks (Attractive, Average, Ugly)
+- Personality (High Charisma, Some Charisma, No Charisma)
+
+A mixed-design ANOVA was conducted to determine whether there was a three-way interaction among gender, looks, and personality on dating ratings.
+
+# Load Required Libraries
+
+```{r}
+library(haven)
+library(tidyverse)
+library(afex)
+library(emmeans)
+library(rstatix)
+library(ggplot2)
+library(car)
+```
+
+# Import Dataset
+
+```{r}
+data <- read_sav("Looksorpersonality.sav")
+
+head(data)
+```
+
+# Convert Data to Long Format
+
+```{r}
+long_data <- data %>%
+  
+  mutate(
+    
+    Subject = factor(1:n()),
+    
+    Gender = as.factor(Gender)
+    
+  ) %>%
+  
+  pivot_longer(
+    
+    cols = att_high:ug_none,
+    
+    names_to = "Condition",
+    
+    values_to = "Rating"
+    
+  )
+```
+
+# Create Looks and Personality Variables
+
+```{r}
+long_data <- long_data %>%
+  
+  mutate(
+    
+    Looks = case_when(
+      str_detect(Condition, "att") ~ "Attractive",
+      str_detect(Condition, "av") ~ "Average",
+      str_detect(Condition, "ug") ~ "Ugly"
+    ),
+    
+    Personality = case_when(
+      str_detect(Condition, "high") ~ "High Charisma",
+      str_detect(Condition, "some") ~ "Some Charisma",
+      str_detect(Condition, "none") ~ "No Charisma"
+    )
+    
+  )
+
+long_data$Looks <- factor(
+  long_data$Looks,
+  levels = c("Attractive", "Average", "Ugly")
+)
+
+long_data$Personality <- factor(
+  long_data$Personality,
+  levels = c(
+    "High Charisma",
+    "Some Charisma",
+    "No Charisma"
+  )
+)
+
+long_data <- na.omit(long_data)
+
+head(long_data)
+```
+
+# Descriptive Statistics
+
+```{r}
+descriptive_stats <- long_data %>%
+  
+  group_by(Gender, Looks, Personality) %>%
+  
+  summarise(
+    
+    Mean = round(mean(Rating), 3),
+    
+    SD = round(sd(Rating), 3),
+    
+    .groups = "drop"
+    
+  )
+
+descriptive_stats
+```
+
+# Mixed-Design ANOVA
+
+```{r}
+anova_results <- aov_car(
+  
+  Rating ~ Gender * Looks * Personality +
+    
+    Error(Subject/(Looks * Personality)),
+  
+  data = long_data,
+  
+  factorize = FALSE
+  
+)
+
+anova_results
+```
+
+# ANOVA Table
+
+```{r}
+nice(anova_results, es = "pes")
+```
+
+# Assumption Checks
+
+## Normality of Residuals
+
+```{r}
+residuals_data <- residuals(anova_results$lm)
+
+shapiro.test(residuals_data)
+```
+
+### Interpretation
+
+- If p > .05, the residuals are approximately normally distributed.
+- If p < .05, the residuals are not normally distributed.
+
+# Homogeneity of Variance
+
+```{r}
+leveneTest(
+  
+  Rating ~ Gender * Looks * Personality,
+  
+  data = long_data
+  
+)
+```
+
+### Interpretation
+
+- If p > .05, homogeneity of variance is satisfied.
+- If p < .05, homogeneity of variance is violated.
+
+# Estimated Marginal Means
+
+```{r}
+emmeans(
+  
+  anova_results,
+  
+  pairwise ~ Looks * Personality | Gender
+  
+)
+```
+
+# Interaction Plot
+
+```{r}
+means_data <- long_data %>%
+  
+  group_by(Gender, Looks, Personality) %>%
+  
+  summarise(
+    
+    Mean = mean(Rating),
+    
+    .groups = "drop"
+    
+  )
+
+ggplot(
+  
+  means_data,
+  
+  aes(
+    
+    x = Looks,
+    
+    y = Mean,
+    
+    color = Personality,
+    
+    group = Personality
+    
+  )
+  
+) +
+
+  geom_line(linewidth = 1) +
+  
+  geom_point(size = 3) +
+  
+  facet_wrap(~Gender) +
+  
+  labs(
+    
+    title = "Interaction Between Gender, Looks, and Personality",
+    
+    x = "Looks",
+    
+    y = "Mean Dating Rating"
+    
+  ) +
+  
+  theme_minimal(base_size = 14)
+```
+
+# Interpretation of Results
+
+## Three-Way Interaction
+
+The mixed-design ANOVA revealed a significant three-way interaction between gender, looks, and personality.
+
+This indicates that the combined effects of attractiveness and charisma on dating ratings differed between males and females.
+
+Specifically:
+
+- Personality influenced dating ratings differently across attractiveness conditions.
+- High charisma generally increased dating ratings.
+- Personality appeared to compensate for lower physical attractiveness.
+- The strength of these effects differed between genders.
+
+# Significant Two-Way Interactions
+
+## Gender × Looks
+
+This interaction suggests that males and females evaluated physical attractiveness differently.
+
+## Gender × Personality
+
+This interaction indicates that charisma affected dating ratings differently depending on gender.
+
+## Looks × Personality
+
+This interaction suggests that personality influenced dating ratings differently across attractiveness levels.
+
+# Main Effects
+
+## Gender
+
+The main effect of gender examines whether males and females differed overall in dating ratings.
+
+## Looks
+
+The main effect of looks examines whether attractiveness influenced dating ratings overall.
+
+## Personality
+
+The main effect of personality examines whether charisma influenced dating ratings overall.
+
+# Overall Conclusion
+
+The mixed-design ANOVA demonstrated that dating preferences were influenced by a combination of gender, physical attractiveness, and personality.
+
+Overall, the personality had a strong influence on dating ratings.High charisma substantially improved dating evaluations. Personality compensated for lower physical attractiveness. The influence of attractiveness and personality differed between males and females.
